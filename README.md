@@ -4,6 +4,7 @@
 **Milestone 2: 3-Axis Wheel-Set Geometry, Torque Allocation & Wheel Loading**
 **Milestone 3: Environmental Disturbance Momentum Accumulation & Saturation-Time Analysis**
 **Milestone 4: Momentum Dumping, Desaturation Logic & Operational Schedule**
+**Milestone 5: Robust Wheel-Set Sizing, Capability Trades & Final Engineering Recommendation**
 
 ## Project objective
 
@@ -288,6 +289,70 @@ that makes the unloading law work at all.
 ![Single desaturation event](results/fig1_single_dump_event.png)
 ![Long-duration momentum-management cycles](results/fig3_long_duration_cycles.png)
 
+## Milestone 5 — Robust Wheel-Set Sizing & Final Recommendation
+
+> **What reaction-wheel torque, momentum-storage, speed, and rotor-inertia
+> capability should the spacecraft actually be sized for once maneuver
+> requirements, wheel geometry, redundancy, environmental accumulation,
+> desaturation thresholds, and engineering margins are considered
+> together?**
+
+This is the project's principal deliverable: a **derived, not assumed**
+final reaction-wheel-set capability recommendation. Full derivation,
+including a real bug the robustness check caught and fixed, is in
+[`docs/final_sizing_methodology.md`](docs/final_sizing_methodology.md).
+
+**Architecture**: 4-wheel tetrahedral (selected on evidence — the
+fault-tolerance torque penalty is small in absolute terms, while 3-wheel
+offers zero recovery from any single failure).
+
+**Adopted design maneuver**: 90°/60 s about the worst-inertia axis — a
+plausible routine reorientation, explicitly **not** M1's 45°/10 s stress
+case (which was built only to demonstrate torque/momentum independence,
+never adopted as a requirement, and is retained throughout M5 purely for
+comparison).
+
+| Quantity | Nominal | Worst 1-wheel failure | Margin | **Final recommendation** |
+|---|---|---|---|---|
+| Torque | 0.0212 N·m | 0.0423 N·m | 1.5× (escalated by the robust case) | **0.08 N·m** |
+| Momentum | — (headroom-driven) | 6.348 N·m·s (raw) | 1.5× (escalated by the robust case) | **12.566 N·m·s** |
+| Speed | — | — | — | **6000 rpm** |
+| Rotor inertia | — | — | — | **0.020 kg·m²** |
+
+**The robust corner case (+20% inertia, one wheel failed) failed against
+the plain 1.5×-margin sizing** — a genuine finding, escalated the final
+numbers above, and in the process caught a real bug: naively applying
+momentum margin to the *entire* pre-existing-threshold-plus-excursion sum
+made the required-$H_{\max}$ equation diverge (no finite solution when
+$SF_H\cdot f_{\rm on}\ge1$); fixed by applying margin to the excursion
+only, matching the headroom formula's own convention. After the fix, the
+escalated final wheel **passes** the robust case exactly — and its
+momentum capacity converges to almost exactly the original M1 synthetic
+wheel's value, now on a rigorously derived basis instead of an assumed one.
+
+**Sensitivity findings**: torque/momentum scale exactly as $T^{-2}$/$T^{-1}$
+with maneuver time and linearly with spacecraft inertia (as expected).
+**Disturbance magnitude and magnetorquer capability change operations
+(dump frequency, dump duration) but never change wheel sizing** — the
+representative environment is far too weak, and the magnetorquer far too
+independent, to be the binding constraint here.
+
+**Updated M3/M4 schedule with the final wheel**: $H_{\rm on}=10.053$,
+$H_{\rm off}=5.027$ N·m·s, repeat interval 779.3 orbits (51.2 days), dump
+duration 3.59 orbits (5.66 h), duty cycle 0.459%, ~7 dumps/representative
+year — validated as consistent with maneuver headroom (max allowable
+dump-on fraction 0.899 ≥ the 0.8 baseline), so **no threshold revision was
+required**.
+
+**Operational note**: the final wheel cannot execute the un-adopted
+45°/10 s stress maneuver (4.8×–9.5× over torque capability) — an accepted
+consequence of sizing to the real mission requirement, not an oversight;
+if ever needed, the correct mitigation is an operational restriction, not
+silent hardware oversizing.
+
+![Torque/momentum feasibility map](results/fig3_feasibility_map.png)
+![Rotor inertia vs wheel speed trade](results/fig4_inertia_speed_tradeoff.png)
+
 ## Repository structure
 
 ```
@@ -303,20 +368,23 @@ reaction-wheel-sizing/
 │   ├── geometry.py         # multi-wheel geometry, allocation, capability (M2)
 │   ├── disturbances.py     # environmental disturbance torque models (M3)
 │   ├── momentum.py         # wheel-space allocation, momentum integration, saturation time (M3)
-│   └── desaturation.py     # magnetorquer unloading, hysteresis, schedule simulation (M4)
-├── tests/                  # pytest suite (205 tests)
+│   ├── desaturation.py     # magnetorquer unloading, hysteresis, schedule simulation (M4)
+│   └── final_sizing.py     # integrated requirement hierarchy, margins, robustness, recommendation (M5)
+├── tests/                  # pytest suite (239 tests)
 ├── scripts/
 │   ├── verify_wheel_sizing.py           # M1 verification report + figures + table
 │   ├── analyze_wheel_geometry.py        # M2 analysis report + figures + table
 │   ├── analyze_momentum_accumulation.py # M3 analysis report + figures + tables
-│   └── analyze_desaturation.py          # M4 analysis report + figures + tables
+│   ├── analyze_desaturation.py          # M4 analysis report + figures + tables
+│   └── final_sizing_study.py            # M5 integrated sizing report + figures + tables
 ├── docs/
 │   ├── conventions.md                       # frozen sign/unit/frame conventions
 │   ├── wheel_sizing_methodology.md          # M1 derivations + verification approach
 │   ├── wheel_geometry_methodology.md        # M2 geometry/allocation/redundancy methodology
 │   ├── momentum_accumulation_methodology.md # M3 disturbance/momentum/saturation methodology
-│   └── desaturation_methodology.md          # M4 magnetorquer/hysteresis/schedule methodology
-└── results/                # generated figures + sizing/loading/budget/desaturation tables
+│   ├── desaturation_methodology.md          # M4 magnetorquer/hysteresis/schedule methodology
+│   └── final_sizing_methodology.md          # M5 requirement hierarchy, margins, robustness, final recommendation
+└── results/                # generated figures + sizing/loading/budget/desaturation/final-sizing tables
 ```
 
 ## Reproduction
@@ -330,13 +398,14 @@ python scripts/verify_wheel_sizing.py
 python scripts/analyze_wheel_geometry.py
 python scripts/analyze_momentum_accumulation.py
 python scripts/analyze_desaturation.py
+python scripts/final_sizing_study.py
 ```
 
 ## Limitations
 
-- No commercial reaction-wheel or magnetorquer selection — both are
-  synthetic capability models used only to exercise the mechanics, and
-  all wheels in the M2/M3/M4 sets share identical capability.
+- No commercial reaction-wheel or magnetorquer selection was performed —
+  M5's primary deliverable is the derived requirement, not a product
+  choice; both remain synthetic capability models.
 - Rest-to-rest maneuver kinematics use an idealized bang-bang
   (triangular-rate) open-loop profile, not a closed-loop controller; the
   3-axis combined slew case (M2 §15) uses a decoupled per-axis sizing
@@ -345,8 +414,8 @@ python scripts/analyze_desaturation.py
 - The M2 null-space freedom in the 4-wheel geometry is analyzed (an
   invariance proof, and its role in why external unloading is required —
   M4 §9) but not implemented as an active redistribution control law.
-- M2/M3/M4 allocation is unconstrained minimum-norm; infeasible demands
-  are detected and reported, never silently clipped.
+- M2/M3/M4/M5 allocation is unconstrained minimum-norm; infeasible
+  demands are detected and reported, never silently clipped.
 - M3's disturbance models are simplified, illustrative approximations
   (SRP/aero direction fixed in body frame; gravity-gradient/magnetic
   periodicity from simplified geometric sweeps, not a real orbit/attitude
@@ -355,18 +424,22 @@ python scripts/analyze_desaturation.py
   §1 and §10 for the full parameter-by-parameter rationale and caveats.
 - M3's long-horizon saturation-time estimates use a mean-torque
   approximation, cross-checked against direct numerical integration for
-  the nominal 4-wheel case only (0.03% agreement); M4's hybrid schedule
-  simulation carries this forward for its ACCUMULATING phase without
-  independently re-validating it for the disturbance-plus-dump
-  composition (the DESATURATING phase is always full closed-loop).
+  the nominal 4-wheel case only (0.03% agreement); M4/M5's schedule
+  recomputation carries this forward without independently re-validating
+  it for every new wheel capacity.
 - M4's unloading law is a simple proportional feedback with no
   integral/derivative terms and no interaction with a real attitude
   controller (ideal attitude hold is assumed throughout, per M1-M3).
-- M4's geomagnetic field model is the same simplified periodic sweep used
-  in M3, not a flight IGRF model.
+- M4/M5's geomagnetic field model is the same simplified periodic sweep
+  used in M3, not a flight IGRF model.
+- M5's adopted maneuver, engineering margins (1.5×), and robust corner
+  case (+20% inertia, one wheel failed) are representative engineering
+  choices, not derived from a specific mission requirements document or
+  reliability policy — see
+  [`docs/final_sizing_methodology.md`](docs/final_sizing_methodology.md)
+  §11 for the full list.
 
 ## Planned next milestone
 
-**M5 — Robust sizing / trade study**: torque and storage margins across
-the full M1-M4 pipeline, wheel-capability trades, sensitivity/uncertainty
-analysis, and final wheel-set sizing recommendation.
+**M6 — Portfolio hardening**: technical audit, curated figures/tables,
+reproducibility polish, and release readiness.

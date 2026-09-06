@@ -17,17 +17,24 @@ Milestone 4 scope: magnetorquer-based momentum dumping, hysteresis
 (dump-on/dump-off) state machine, closed-loop and hybrid long-duration
 desaturation-schedule simulation, and the external-unloading-vs-
 internal-null-space-redistribution distinction (see `desaturation.py`).
-Commercial hardware selection is NOT implemented yet.
+
+Milestone 5 scope: integrated requirement hierarchy across M1-M4
+(torque, momentum, speed, rotor inertia), fault-tolerant and
+directional-envelope sizing, maneuver-at-threshold momentum headroom,
+operational-threshold validation, candidate-design feasibility mapping,
+sensitivity/robustness studies, and the final wheel-set capability
+recommendation (see `final_sizing.py`). Commercial hardware selection
+remains optional and secondary to the derived requirements.
 
 See docs/conventions.md for the frozen sign/unit conventions used
 throughout this package.
 """
 
-from . import constants, spacecraft, wheel, maneuvers, sizing, geometry, disturbances, momentum, desaturation
+from . import constants, spacecraft, wheel, maneuvers, sizing, geometry, disturbances, momentum, desaturation, final_sizing
 
 __all__ = [
     "constants", "spacecraft", "wheel", "maneuvers", "sizing", "geometry",
-    "disturbances", "momentum", "desaturation",
+    "disturbances", "momentum", "desaturation", "final_sizing",
 ]
 
 __version__ = "0.1.0"
