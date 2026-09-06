@@ -2,6 +2,7 @@
 
 **Milestone 1: Reaction-Wheel Mechanics & Maneuver Torque Sizing**
 **Milestone 2: 3-Axis Wheel-Set Geometry, Torque Allocation & Wheel Loading**
+**Milestone 3: Environmental Disturbance Momentum Accumulation & Saturation-Time Analysis**
 
 ## Project objective
 
@@ -180,6 +181,59 @@ tolerance must size against the failed-case capability, not the nominal
 ![Wheel-axis geometry](results/fig1_wheel_axis_geometry.png)
 ![Nominal vs single-wheel-failure capability](results/fig4_nominal_vs_failed_capability.png)
 
+## Milestone 3 — Environmental Disturbance Momentum Accumulation & Saturation Time
+
+> **How quickly do representative environmental disturbance torques
+> accumulate angular momentum in the reaction-wheel set, which
+> disturbance directions drive individual-wheel storage, and how long
+> can the spacecraft operate before momentum saturation requires
+> unloading?**
+
+M3 adds a representative LEO disturbance environment (SRP, aerodynamic
+drag, gravity-gradient, residual magnetic dipole — all illustrative
+engineering assumptions, parameter-by-parameter rationale in
+[`docs/momentum_accumulation_methodology.md`](docs/momentum_accumulation_methodology.md)),
+allocates it into wheel space by reusing M2's verified pseudoinverse
+allocation, integrates wheel momentum, and computes time-to-unloading.
+**Momentum dumping/desaturation is not implemented — every number below
+is a time until unloading becomes necessary, not a correction.**
+
+**Representative environment** (500 km circular LEO, $T_{\rm orb}=94.6$
+min): constant SRP + aerodynamic + magnetic-mean secular bias, plus
+orbit-periodic gravity-gradient and magnetic-direction oscillation.
+
+**Dominant drivers are NOT the same disturbance**:
+
+| | Component | Magnitude |
+|---|---|---|
+| Dominant **secular** (accumulation) driver | Aerodynamic drag | mean $1.91\times10^{-6}$ N·m |
+| Dominant **peak-torque** driver | Gravity-gradient | peak $1.84\times10^{-5}$ N·m (near-zero orbital mean) |
+
+**Operational threshold**: $H_{\rm threshold}=f_H H_{\max}=0.8\times12.566=10.053$ N·m·s per wheel (20% headroom below the physical wheel limit).
+
+| Configuration | Limiting wheel | Orbits to threshold | Days to threshold |
+|---|---|---|---|
+| 3-wheel orthogonal | Wz | 926.0 | 60.8 |
+| 4-wheel tetrahedral (nominal) | W2 | 1558.5 | 102.4 |
+| 4-wheel, any one wheel failed (mean) | — | ~999 | ~65.7 |
+
+The 4-wheel geometry gives **1.68× longer** time-to-unloading than the
+3-wheel baseline for this disturbance direction (quantified, not
+assumed — geometry comparisons in M3 are disturbance-direction-dependent,
+unlike M2's direction-independent capability comparison). A single wheel
+failure cuts the 4-wheel time-to-unloading by **35.9%** on average — and,
+notably, the four failure cases are *not* symmetric here (908–1300
+orbits) despite the tetrahedral geometry's perfect capability symmetry in
+M2, because a fixed disturbance direction breaks that rotational
+symmetry. The mean-torque analytical estimate matches full numerical
+integration to **0.03%** for this environment. Disturbance-magnitude
+sensitivity confirms the expected constant-disturbance scaling law
+($\tau_d\to k\tau_d \Rightarrow t_{\rm sat}\to t_{\rm sat}/k$) to within
+numerical precision.
+
+![Wheel momentum histories](results/fig2_wheel_momentum_histories.png)
+![Nominal vs single-wheel-failure saturation time](results/fig4_failure_saturation_time.png)
+
 ## Repository structure
 
 ```
@@ -192,16 +246,20 @@ reaction-wheel-sizing/
 │   ├── wheel.py            # ideal reaction-wheel mechanics model
 │   ├── maneuvers.py        # rigid-body torque/momentum + triangular slew
 │   ├── sizing.py           # reusable maneuver-driven sizing API
-│   └── geometry.py         # multi-wheel geometry, allocation, capability (M2)
-├── tests/                  # pytest suite (112 tests)
+│   ├── geometry.py         # multi-wheel geometry, allocation, capability (M2)
+│   ├── disturbances.py     # environmental disturbance torque models (M3)
+│   └── momentum.py         # wheel-space allocation, momentum integration, saturation time (M3)
+├── tests/                  # pytest suite (166 tests)
 ├── scripts/
-│   ├── verify_wheel_sizing.py     # M1 verification report + figures + table
-│   └── analyze_wheel_geometry.py  # M2 analysis report + figures + table
+│   ├── verify_wheel_sizing.py           # M1 verification report + figures + table
+│   ├── analyze_wheel_geometry.py        # M2 analysis report + figures + table
+│   └── analyze_momentum_accumulation.py # M3 analysis report + figures + tables
 ├── docs/
-│   ├── conventions.md                 # frozen sign/unit/frame conventions
-│   ├── wheel_sizing_methodology.md    # M1 derivations + verification approach
-│   └── wheel_geometry_methodology.md  # M2 geometry/allocation/redundancy methodology
-└── results/                # generated figures + sizing/loading tables
+│   ├── conventions.md                       # frozen sign/unit/frame conventions
+│   ├── wheel_sizing_methodology.md          # M1 derivations + verification approach
+│   ├── wheel_geometry_methodology.md        # M2 geometry/allocation/redundancy methodology
+│   └── momentum_accumulation_methodology.md # M3 disturbance/momentum/saturation methodology
+└── results/                # generated figures + sizing/loading/budget tables
 ```
 
 ## Reproduction
@@ -213,17 +271,17 @@ pip install -e ".[dev]"
 pytest -q
 python scripts/verify_wheel_sizing.py
 python scripts/analyze_wheel_geometry.py
+python scripts/analyze_momentum_accumulation.py
 ```
 
 ## Limitations
 
-- No environmental disturbance torques (gravity-gradient, aerodynamic,
-  solar-radiation-pressure, magnetic) or momentum accumulation over an
-  orbit (Milestone 3).
-- No momentum-dumping/desaturation modeling (Milestone 4).
+- No momentum-dumping/desaturation modeling (Milestone 4) — every M3
+  "saturation time" is a time until unloading becomes necessary, never a
+  correction.
 - No commercial reaction-wheel selection — the "representative wheel" is
   a synthetic capability model used only to exercise the mechanics, and
-  all wheels in the M2 sets share identical capability.
+  all wheels in the M2/M3 sets share identical capability.
 - Rest-to-rest maneuver kinematics use an idealized bang-bang
   (triangular-rate) open-loop profile, not a closed-loop controller; the
   3-axis combined slew case (M2 §15) uses a decoupled per-axis sizing
@@ -232,12 +290,21 @@ python scripts/analyze_wheel_geometry.py
 - The M2 null-space freedom in the 4-wheel geometry is demonstrated but
   not yet used for any secondary objective (wheel-speed balancing,
   momentum redistribution) — that is future-milestone scope.
-- M2 allocation is unconstrained minimum-norm; infeasible demands are
+- M2/M3 allocation is unconstrained minimum-norm; infeasible demands are
   detected and reported, never silently clipped.
+- M3's disturbance models are simplified, illustrative approximations
+  (SRP/aero direction fixed in body frame; gravity-gradient/magnetic
+  periodicity from simplified geometric sweeps, not a real orbit/attitude
+  or IGRF propagator) — see
+  [`docs/momentum_accumulation_methodology.md`](docs/momentum_accumulation_methodology.md)
+  §1 and §10 for the full parameter-by-parameter rationale and caveats.
+- M3's long-horizon saturation-time estimates use a mean-torque
+  approximation, cross-checked against direct numerical integration for
+  the nominal 4-wheel case only (0.03% agreement) — a very different
+  disturbance mix would need the same check repeated.
 
 ## Planned next milestone
 
-**M3 — Disturbance momentum accumulation**: representative environmental
-disturbance torques (gravity-gradient, aerodynamic, solar-radiation-pressure,
-magnetic), momentum buildup over an orbit, storage sizing, and saturation
-time.
+**M4 — Desaturation strategy**: momentum-dumping model (e.g.
+magnetorquer unloading), desaturation thresholds, dump scheduling,
+dump duration/frequency, and operational duty cycle.
