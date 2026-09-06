@@ -143,6 +143,28 @@ With the fix, the escalated recommendation ($\tau=0.08$ N·m, $H=12.0\to
 12.566$ N·m·s after $J_w$ rounding) **passes** the robust corner case
 confirmation exactly.
 
+## 7b. Concurrency: which conditions can actually combine
+
+Before adopting a "worst case," each candidate combination is checked
+for physical or operational plausibility rather than assembled
+automatically:
+
+| Combination | Classification | Included in the robust case? |
+|---|---|---|
+| Spacecraft inertia uncertainty (+20%) + one wheel failed | Physically simultaneous — a mass-property estimation error does not depend on wheel health | **Yes** |
+| One wheel failed + adopted (routine) maneuver | Physically simultaneous — the spacecraft must still be able to slew after a failure | **Yes** |
+| One wheel failed + adopted maneuver + inertia uncertainty | Physically simultaneous (all three are independent physical facts that can co-occur) | **Yes — this is the robust case** |
+| One wheel failed + the **un-adopted stress maneuver** (45°/10 s) | Not a required case — the stress maneuver was never adopted as an operational requirement (§2), so it is not combined with anything for sizing purposes | **No** (reported separately, §10, as an explicit operational restriction rather than folded into hardware sizing) |
+| Near dump-on threshold + doubled disturbance | Independent sizing/operations question — doubled disturbance changes *how often* the threshold is reached, not the *momentum excursion* once a maneuver starts there | Evaluated separately (§9); not combined with the inertia+failure robust case, since disturbance magnitude does not change the momentum-headroom arithmetic (§4) |
+| Active desaturation (magnetorquer driving) + adopted maneuver | Operationally avoidable in practice (a real program can defer non-urgent maneuvers during an active dump), and the M4 desaturation torques are five orders of magnitude below maneuver torques (M4 §7) — combining them would not change the sizing conclusion | Not combined; noted as operationally negligible rather than a sizing driver |
+
+The robust case therefore combines exactly the physically-simultaneous,
+sizing-relevant factors (inertia uncertainty, wheel failure, the adopted
+maneuver) and deliberately excludes the un-adopted stress maneuver and
+the disturbance-magnitude sweep, each for a stated reason — not an
+unconstrained "everything bad happens at once" scenario, which would
+produce an artificially inflated, physically meaningless requirement.
+
 ## 8. Final recommendation
 
 | Quantity | Value | Driven by |

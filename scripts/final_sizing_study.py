@@ -268,15 +268,19 @@ def main():
     Omega_max_recommended_rpm = 6000
     Omega_max_recommended = Omega_max_recommended_rpm * 2 * np.pi / 60.0
     J_w_recommended = required_rotor_inertia(H_recommended, Omega_max_recommended)
-    E_w_recommended = stored_energy(J_w_recommended, Omega_max_recommended)
-    omega_dot_recommended = required_wheel_acceleration(tau_recommended, J_w_recommended)
+    J_w_recommended_rounded = math.ceil(J_w_recommended * 1000) / 1000.0
+    # Stored energy and required acceleration are reported for the ROUNDED
+    # final J_w (what the wheel actually has), not the pre-rounding exact
+    # quotient -- rounding J_w up (for margin) also raises stored energy
+    # and required acceleration capability above the bare-minimum values,
+    # and reporting the unrounded figures here would understate both.
+    E_w_recommended = stored_energy(J_w_recommended_rounded, Omega_max_recommended)
+    omega_dot_recommended = required_wheel_acceleration(tau_recommended, J_w_recommended_rounded)
     print(f"\n  Selected: Omega_max_recommended = {Omega_max_recommended_rpm} rpm "
           f"({Omega_max_recommended:.2f} rad/s), J_w_recommended = {J_w_recommended:.5f} kg*m^2 "
-          f"(rounded: {math.ceil(J_w_recommended*1000)/1000:.3f} kg*m^2)")
-    print(f"  Stored energy at max speed: {E_w_recommended:.1f} J; "
-          f"required wheel acceleration: {omega_dot_recommended:.3f} rad/s^2")
-
-    J_w_recommended_rounded = math.ceil(J_w_recommended * 1000) / 1000.0
+          f"(rounded up to {J_w_recommended_rounded:.3f} kg*m^2)")
+    print(f"  Stored energy at max speed (using rounded J_w): {E_w_recommended:.1f} J; "
+          f"required wheel acceleration (using rounded J_w): {omega_dot_recommended:.3f} rad/s^2")
 
     # -----------------------------------------------------------------
     # 7. Final wheel object and integrated M1-M4 re-verification
@@ -320,7 +324,12 @@ def main():
           f"({dump_final.duration/3600:.2f} hours), reached_off={dump_final.reached_off}")
     duty_final = dump_final.duration / (dump_final.duration + final_schedule.repeat_interval_s)
     dumps_per_year_final = 365 * 86400.0 / (final_schedule.repeat_interval_s + dump_final.duration)
-    print(f"  Updated duty cycle: {duty_final*100:.4f}%, representative dumps/year: {dumps_per_year_final:.1f}")
+    print(f"  Updated duty cycle: {duty_final*100:.4f}%, steady-state dumps/year: {dumps_per_year_final:.1f}")
+    print(f"  (steady-state rate = 365 days / one full H_off-to-H_on-to-H_off cycle; M4's schedule")
+    print(f"  simulation reports 6 dumps in an actual first year STARTING FROM ZERO wheel momentum,")
+    print(f"  which is fewer because the initial zero-to-H_on charge-up takes longer than a steady-state")
+    print(f"  cycle -- both numbers are correct under their own definition, see")
+    print(f"  docs/desaturation_methodology.md for the reconciliation.)")
 
     # -----------------------------------------------------------------
     # 8. Sensitivity studies

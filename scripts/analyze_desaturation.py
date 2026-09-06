@@ -154,7 +154,12 @@ def main():
     )
     stats4 = schedule_statistics(events4, T_horizon)
     print(f"  Horizon: {T_horizon/86400:.0f} days ({T_horizon/T_orb:.0f} orbits)")
-    print(f"  Total dumps: {stats4.n_dumps}")
+    print(f"  Total dumps in year 1 (starting from zero wheel momentum): {stats4.n_dumps}")
+    print(f"  NOTE: year 1 includes the initial zero-to-H_on charge-up (the full M3-scale accumulation")
+    print(f"  time, longer than a steady-state H_off-to-H_on cycle), so this count is LOWER than the")
+    print(f"  steady-state average rate (365 days / repeat interval = 365/{t_repeat4/86400:.1f} = "
+          f"{365/(t_repeat4/86400):.1f}/year) reported in M5. Both are correct under their own definition")
+    print(f"  -- see docs/desaturation_methodology.md for the reconciliation.")
     print(f"  Mean interval: {stats4.mean_interval:.3e} s ({stats4.mean_interval/86400:.2f} days)"
           if stats4.mean_interval else "  Mean interval: n/a (fewer than 2 dumps)")
     print(f"  Min/Max interval: "

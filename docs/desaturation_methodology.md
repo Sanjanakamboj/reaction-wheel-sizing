@@ -213,6 +213,30 @@ days (min/max 51.44/51.46 — a stationary environment gives nearly
 identical intervals, reported as such rather than manufacturing false
 variation), total desaturation time 31.2 hours, **duty cycle 0.356%**.
 
+### Reconciling "6 dumps/year" (M4) with "~7.1 dumps/year" (M5)
+
+These are two different, individually correct quantities, not a bug:
+
+- **M4's "6 dumps"** counts actual completed events in one concrete
+  simulated year that **starts from zero wheel momentum**
+  (`simulate_mission_schedule(..., h0=None)`). The *first* cycle in that
+  year is a full zero-to-$H_{\rm on}$ charge-up — the same ~1550-orbit
+  timescale as M3's zero-to-threshold result — which is substantially
+  longer than a steady-state $H_{\rm off}\to H_{\rm on}$ cycle. That one
+  long first cycle reduces how many complete cycles fit in 365 days.
+- **M5's "~7.1 dumps/year"** is a **steady-state average rate**,
+  `365 days / (repeat_interval + dump_duration)`, i.e. the long-run
+  cadence *after* the initial charge-up, with no zero-momentum start-up
+  transient included.
+
+A mission that starts with wheels already near their operating band
+(the realistic case after initial commissioning, not literally
+momentum-free) would see the M5 steady-state rate from day one; a
+mission counted from a literal zero-momentum epoch sees the M4 number in
+its first year and the steady-state rate thereafter. Both scripts now
+print this reconciliation explicitly rather than leaving the two numbers
+to be compared without context.
+
 ## 9. Null-space redistribution vs. external unloading
 
 M2 identified a 1-D null space for the 4-wheel tetrahedral geometry.
