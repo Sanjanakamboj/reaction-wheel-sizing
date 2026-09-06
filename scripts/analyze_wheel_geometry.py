@@ -322,7 +322,7 @@ def make_figure2_allocations(table_rows, g3, g4, path):
         ax.set_xticks(x)
         ax.set_xticklabels(g.labels)
         ax.set_xlabel("Wheel")
-        ax.set_ylabel("Wheel torque [N*m]")
+        ax.set_ylabel("Wheel torque [N·m]")
         ax.set_title(gname)
         ax.grid(True, alpha=0.3, axis="y")
 
