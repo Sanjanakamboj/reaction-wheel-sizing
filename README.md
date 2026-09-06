@@ -3,6 +3,7 @@
 **Milestone 1: Reaction-Wheel Mechanics & Maneuver Torque Sizing**
 **Milestone 2: 3-Axis Wheel-Set Geometry, Torque Allocation & Wheel Loading**
 **Milestone 3: Environmental Disturbance Momentum Accumulation & Saturation-Time Analysis**
+**Milestone 4: Momentum Dumping, Desaturation Logic & Operational Schedule**
 
 ## Project objective
 
@@ -234,6 +235,59 @@ numerical precision.
 ![Wheel momentum histories](results/fig2_wheel_momentum_histories.png)
 ![Nominal vs single-wheel-failure saturation time](results/fig4_failure_saturation_time.png)
 
+## Milestone 4 — Momentum Dumping, Desaturation Logic & Operational Schedule
+
+> **Once reaction-wheel momentum approaches the operational threshold,
+> how should the spacecraft unload momentum, how much external unloading
+> authority is required, how long does a dump take, and what
+> desaturation schedule keeps the wheel set inside a safe operating
+> envelope?**
+
+M4 adds a representative synthetic magnetorquer ($m_{\max}=20$ A·m², not
+a commercial product), a momentum-feedback unloading law with a sign
+**derived** (not guessed) from the M1–M3 conventions, a dump-on/dump-off
+hysteresis state machine, and a hybrid analytical/closed-loop
+long-duration schedule simulator. Full derivation and every parameter's
+rationale: [`docs/desaturation_methodology.md`](docs/desaturation_methodology.md).
+
+**Thresholds** (continuous with M3): $H_{\rm on}=0.8H_{\max}=10.053$,
+$H_{\rm off}=0.4H_{\max}=5.027$ N·m·s.
+
+**Baseline single dump** (nominal 4-wheel tetrahedral, starting at
+$H_{\rm on}$): duration **3.59 orbits (5.66 hours)** — about 15× longer
+than the idealized unsaturated estimate (0.24 orbits), because the
+commanded dipole is saturated at $m_{\max}$ for nearly the whole dump and
+mean field-geometry effectiveness is only 0.76 (range 0.56–0.93). Peak
+wheel-torque utilization during the dump is 0.0022 — far below capacity.
+
+| Configuration | Dump duration | Repeat interval | Duty cycle |
+|---|---|---|---|
+| 3-wheel orthogonal | 1.97 orbits | 463.0 orbits | 0.423% |
+| 4-wheel tetrahedral (nominal) | 3.59 orbits | 779.3 orbits | 0.459% |
+| 4-wheel, any one wheel failed | 1.93–2.53 orbits | 447–650 orbits | — |
+
+Over a representative 1-year horizon: **6 dumps**, mean interval 51.45
+days (min/max 51.44/51.46 — a stationary environment), total
+desaturation time 31.2 hours, **duty cycle 0.356%**.
+
+**Key findings**: the 4-wheel geometry needs fewer dumps/year (longer
+repeat interval) but each dump takes longer — consistent with, and a
+direct operational consequence of, M3's momentum-accumulation-lifetime
+comparison. A magnetorquer capability sweep (0.5×–4×) shows dump duration
+scaling close to inversely with $m_{\max}$, because the dump spends
+nearly all its duration saturated. The threshold-band trade shows repeat
+interval depends on band *width*, not position — three equal-width bands
+give nearly identical repeat intervals, while halving the band nearly
+halves it, with duty cycle staying roughly constant. **Internal
+null-space redistribution can never reduce total system momentum** — it
+leaves $A\mathbf h_w$ exactly unchanged (verified to $<10^{-9}$ N·m·s) —
+only the external magnetorquer torque reduces it (17.50→8.18 N·m·s over
+one dump), a direct, load-bearing consequence of the same sign derivation
+that makes the unloading law work at all.
+
+![Single desaturation event](results/fig1_single_dump_event.png)
+![Long-duration momentum-management cycles](results/fig3_long_duration_cycles.png)
+
 ## Repository structure
 
 ```
@@ -248,18 +302,21 @@ reaction-wheel-sizing/
 │   ├── sizing.py           # reusable maneuver-driven sizing API
 │   ├── geometry.py         # multi-wheel geometry, allocation, capability (M2)
 │   ├── disturbances.py     # environmental disturbance torque models (M3)
-│   └── momentum.py         # wheel-space allocation, momentum integration, saturation time (M3)
-├── tests/                  # pytest suite (166 tests)
+│   ├── momentum.py         # wheel-space allocation, momentum integration, saturation time (M3)
+│   └── desaturation.py     # magnetorquer unloading, hysteresis, schedule simulation (M4)
+├── tests/                  # pytest suite (205 tests)
 ├── scripts/
 │   ├── verify_wheel_sizing.py           # M1 verification report + figures + table
 │   ├── analyze_wheel_geometry.py        # M2 analysis report + figures + table
-│   └── analyze_momentum_accumulation.py # M3 analysis report + figures + tables
+│   ├── analyze_momentum_accumulation.py # M3 analysis report + figures + tables
+│   └── analyze_desaturation.py          # M4 analysis report + figures + tables
 ├── docs/
 │   ├── conventions.md                       # frozen sign/unit/frame conventions
 │   ├── wheel_sizing_methodology.md          # M1 derivations + verification approach
 │   ├── wheel_geometry_methodology.md        # M2 geometry/allocation/redundancy methodology
-│   └── momentum_accumulation_methodology.md # M3 disturbance/momentum/saturation methodology
-└── results/                # generated figures + sizing/loading/budget tables
+│   ├── momentum_accumulation_methodology.md # M3 disturbance/momentum/saturation methodology
+│   └── desaturation_methodology.md          # M4 magnetorquer/hysteresis/schedule methodology
+└── results/                # generated figures + sizing/loading/budget/desaturation tables
 ```
 
 ## Reproduction
@@ -272,26 +329,24 @@ pytest -q
 python scripts/verify_wheel_sizing.py
 python scripts/analyze_wheel_geometry.py
 python scripts/analyze_momentum_accumulation.py
+python scripts/analyze_desaturation.py
 ```
 
 ## Limitations
 
-- No momentum-dumping/desaturation modeling (Milestone 4) — every M3
-  "saturation time" is a time until unloading becomes necessary, never a
-  correction.
-- No commercial reaction-wheel selection — the "representative wheel" is
-  a synthetic capability model used only to exercise the mechanics, and
-  all wheels in the M2/M3 sets share identical capability.
+- No commercial reaction-wheel or magnetorquer selection — both are
+  synthetic capability models used only to exercise the mechanics, and
+  all wheels in the M2/M3/M4 sets share identical capability.
 - Rest-to-rest maneuver kinematics use an idealized bang-bang
   (triangular-rate) open-loop profile, not a closed-loop controller; the
   3-axis combined slew case (M2 §15) uses a decoupled per-axis sizing
   approximation, not exact nonlinear rigid-body attitude dynamics.
 - Spacecraft inertia is diagonal (principal-axis); no products of inertia.
-- The M2 null-space freedom in the 4-wheel geometry is demonstrated but
-  not yet used for any secondary objective (wheel-speed balancing,
-  momentum redistribution) — that is future-milestone scope.
-- M2/M3 allocation is unconstrained minimum-norm; infeasible demands are
-  detected and reported, never silently clipped.
+- The M2 null-space freedom in the 4-wheel geometry is analyzed (an
+  invariance proof, and its role in why external unloading is required —
+  M4 §9) but not implemented as an active redistribution control law.
+- M2/M3/M4 allocation is unconstrained minimum-norm; infeasible demands
+  are detected and reported, never silently clipped.
 - M3's disturbance models are simplified, illustrative approximations
   (SRP/aero direction fixed in body frame; gravity-gradient/magnetic
   periodicity from simplified geometric sweeps, not a real orbit/attitude
@@ -300,11 +355,18 @@ python scripts/analyze_momentum_accumulation.py
   §1 and §10 for the full parameter-by-parameter rationale and caveats.
 - M3's long-horizon saturation-time estimates use a mean-torque
   approximation, cross-checked against direct numerical integration for
-  the nominal 4-wheel case only (0.03% agreement) — a very different
-  disturbance mix would need the same check repeated.
+  the nominal 4-wheel case only (0.03% agreement); M4's hybrid schedule
+  simulation carries this forward for its ACCUMULATING phase without
+  independently re-validating it for the disturbance-plus-dump
+  composition (the DESATURATING phase is always full closed-loop).
+- M4's unloading law is a simple proportional feedback with no
+  integral/derivative terms and no interaction with a real attitude
+  controller (ideal attitude hold is assumed throughout, per M1-M3).
+- M4's geomagnetic field model is the same simplified periodic sweep used
+  in M3, not a flight IGRF model.
 
 ## Planned next milestone
 
-**M4 — Desaturation strategy**: momentum-dumping model (e.g.
-magnetorquer unloading), desaturation thresholds, dump scheduling,
-dump duration/frequency, and operational duty cycle.
+**M5 — Robust sizing / trade study**: torque and storage margins across
+the full M1-M4 pipeline, wheel-capability trades, sensitivity/uncertainty
+analysis, and final wheel-set sizing recommendation.
