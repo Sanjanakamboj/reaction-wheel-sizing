@@ -46,7 +46,7 @@ unloading" (see docs/desaturation_methodology.md).
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 

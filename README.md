@@ -460,3 +460,7 @@ a clean checkout via the commands above. No further engineering
 milestone, hardware-selection, or new functionality is planned for this
 project; a separate, optional commercial-hardware comparison against the
 final derived requirement could be pursued independently in the future.
+
+## License
+
+[MIT](LICENSE)

@@ -35,8 +35,7 @@ from reaction_wheel.momentum import mean_wheel_torque
 from reaction_wheel.desaturation import (
     Magnetorquer, representative_magnetorquer, HysteresisThresholds,
     simulate_dump, analytical_repeat_interval, null_space_redistribute,
-    simulate_mission_schedule, schedule_statistics, unloading_effectiveness,
-    project_perpendicular_to_field,
+    simulate_mission_schedule, schedule_statistics,
 )
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")

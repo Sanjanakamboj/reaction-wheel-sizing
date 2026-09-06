@@ -33,9 +33,8 @@ from reaction_wheel.disturbances import (
 )
 from reaction_wheel.momentum import (
     integrate_wheel_momentum, mean_wheel_torque, momentum_per_orbit,
-    first_threshold_crossing, momentum_utilization, wheel_speed_history,
+    first_threshold_crossing, momentum_utilization,
     analytical_constant_torque_saturation_time, secular_momentum_approximation,
-    compare_geometries,
 )
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")

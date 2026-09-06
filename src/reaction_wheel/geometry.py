@@ -39,7 +39,7 @@ conserved -- the direct 3-vector generalization of the M1 scalar
 conservation law H_body + H_w = const.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Sequence
 
 import numpy as np

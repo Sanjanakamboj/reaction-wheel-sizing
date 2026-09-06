@@ -37,12 +37,12 @@ from reaction_wheel.geometry import orthogonal_3wheel, tetrahedral_4wheel, alloc
 from reaction_wheel.disturbances import leo_orbit_reference, dipole_field_body
 from reaction_wheel.sizing import SizingMargins
 from reaction_wheel.momentum import mean_wheel_torque
-from reaction_wheel.desaturation import representative_magnetorquer, simulate_dump, HysteresisThresholds
+from reaction_wheel.desaturation import representative_magnetorquer, simulate_dump
 from reaction_wheel.final_sizing import (
     ADOPTED_MANEUVER, STRESS_MANEUVER, maneuver_body_vectors,
     wheel_torque_requirement, directional_envelope_torque_requirement,
     maneuver_at_threshold_headroom, required_H_max_for_headroom,
-    max_allowable_dump_on_fraction, max_pre_maneuver_momentum,
+    max_allowable_dump_on_fraction,
     required_rotor_inertia, stored_energy, required_wheel_acceleration,
     classify_candidate, feasibility_grid,
     maneuver_time_sensitivity, inertia_sensitivity,

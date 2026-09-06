@@ -33,7 +33,6 @@ from reaction_wheel.geometry import (
     per_wheel_momentum_utilization,
     is_torque_allocation_feasible,
     describe_feasibility,
-    fibonacci_sphere_directions,
     directional_capability_envelope,
     isotropy_ratio,
 )

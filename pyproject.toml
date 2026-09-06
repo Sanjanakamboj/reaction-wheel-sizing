@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "reaction-wheel"
 version = "0.1.0"
-description = "Reaction-wheel sizing and momentum-management analysis for a representative small spacecraft (GNC-04, Milestone 1)."
+description = "Reaction-wheel sizing and momentum-management analysis for a representative small spacecraft (GNC-04): maneuver torque/momentum sizing, multi-wheel geometry and redundancy, environmental disturbance accumulation, magnetorquer desaturation, and final robust wheel-set sizing."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
