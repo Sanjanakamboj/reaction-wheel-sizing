@@ -1,6 +1,7 @@
 # GNC-04 — Reaction Wheel Sizing & Momentum Management
 
 **Milestone 1: Reaction-Wheel Mechanics & Maneuver Torque Sizing**
+**Milestone 2: 3-Axis Wheel-Set Geometry, Torque Allocation & Wheel Loading**
 
 ## Project objective
 
@@ -115,6 +116,70 @@ $\Omega_{\max}=6000$ rpm).
   relaxing torque requirements than for relaxing momentum-storage
   requirements.
 
+## Milestone 2 — 3-Axis Wheel-Set Geometry, Allocation & Redundancy
+
+> **How does a multi-wheel geometry map spacecraft torque and angular
+> momentum into individual wheel demands, and how do 3-wheel orthogonal
+> and 4-wheel redundant configurations compare in worst-wheel loading and
+> failure tolerance?**
+
+M2 extends M1's single-axis mechanics to arbitrary wheel-axis geometries
+via a wheel-axis matrix $A\in\mathbb R^{3\times N}$ (columns = body-frame
+unit spin axes) and minimum-norm pseudoinverse allocation. Full
+derivations, sign-convention reconciliation with M1, and the
+redundancy-vs-capability distinction are in
+[`docs/wheel_geometry_methodology.md`](docs/wheel_geometry_methodology.md).
+
+**3-wheel orthogonal** ($A_3=I_3$): baseline, one wheel per body axis.
+**4-wheel tetrahedral** (redundant): axes proportional to
+$[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]$, each normalized — a symmetric
+tight frame ($A_4A_4^T=\tfrac43 I_3$) with $\kappa(A_4)=1$ and a 1-D null
+space.
+
+**Representative allocation** (M1's worst-case maneuver, 45°/10 s about
+$I_y$, $\tau_{\rm req}=0.880$ N·m, mapped as a pure-$y$ body torque):
+
+| Geometry | Wheel torques [N·m] | Worst wheel | $\rho_{\tau,\max}$ |
+|---|---|---|---|
+| 3-wheel orthogonal | [0, −0.880, 0] | Wy | 4.40 |
+| 4-wheel tetrahedral | [−0.381, 0.381, −0.381, 0.381] | W1 | 1.90 |
+
+Spreading the same body torque across 4 wheels roughly **halves** the
+worst-wheel torque utilization relative to the 3-wheel case — but neither
+configuration satisfies this particular (deliberately aggressive) demand
+against the representative wheel's $\tau_{\max}=0.2$ N·m, correctly
+flagged as infeasible rather than silently clipped. Full case-by-case
+results (5 cases × 2 geometries) are in
+[`results/wheel_loading_table.md`](results/wheel_loading_table.md).
+
+**Torque-envelope comparison** — isotropy is nearly identical between the
+two geometries ($\eta\approx0.587$ for both), but the tetrahedral
+geometry's envelope is uniformly **4/3× larger** in every direction (a
+direct consequence of its tight-frame structure):
+
+| Geometry | $\tau_{\min}$ [N·m] | $\tau_{\max,{\rm cap}}$ [N·m] | $\eta=\tau_{\min}/\tau_{\max,{\rm cap}}$ |
+|---|---|---|---|
+| 3-wheel orthogonal | 0.200 | 0.341 | 0.587 |
+| 4-wheel tetrahedral (nominal) | 0.267 | 0.455 | 0.587 |
+
+**Single-wheel-failure result**: every one of the 4 possible single-wheel
+failures leaves the remaining 3-wheel subset full rank (full 3-axis
+control authority preserved), and by tetrahedral symmetry all four
+failure cases are geometrically equivalent (spread in minimum capability
+across the 4 cases: ~$10^{-5}$ N·m, i.e. numerical noise).
+
+**Key redundancy finding**: nominal 4-wheel minimum capability (0.267
+N·m) exceeds the 3-wheel baseline (0.200 N·m) — a real capability gain —
+but after **any single wheel fails**, capability drops to a mean 0.163
+N·m, a **38.8% loss relative to the nominal 4-wheel capability**, and
+*below* the plain 3-wheel baseline. **Redundancy and increased nominal
+capability are not the same concept**: a program requiring one-wheel-fault
+tolerance must size against the failed-case capability, not the nominal
+4-wheel number.
+
+![Wheel-axis geometry](results/fig1_wheel_axis_geometry.png)
+![Nominal vs single-wheel-failure capability](results/fig4_nominal_vs_failed_capability.png)
+
 ## Repository structure
 
 ```
@@ -126,14 +191,17 @@ reaction-wheel-sizing/
 │   ├── spacecraft.py       # rigid spacecraft inertia model
 │   ├── wheel.py            # ideal reaction-wheel mechanics model
 │   ├── maneuvers.py        # rigid-body torque/momentum + triangular slew
-│   └── sizing.py           # reusable maneuver-driven sizing API
-├── tests/                  # pytest suite (65 tests)
+│   ├── sizing.py           # reusable maneuver-driven sizing API
+│   └── geometry.py         # multi-wheel geometry, allocation, capability (M2)
+├── tests/                  # pytest suite (112 tests)
 ├── scripts/
-│   └── verify_wheel_sizing.py   # M1 verification report + figures + table
+│   ├── verify_wheel_sizing.py     # M1 verification report + figures + table
+│   └── analyze_wheel_geometry.py  # M2 analysis report + figures + table
 ├── docs/
-│   ├── conventions.md              # frozen sign/unit/frame conventions
-│   └── wheel_sizing_methodology.md # derivations + verification approach
-└── results/                # generated figures + maneuver-sizing table
+│   ├── conventions.md                 # frozen sign/unit/frame conventions
+│   ├── wheel_sizing_methodology.md    # M1 derivations + verification approach
+│   └── wheel_geometry_methodology.md  # M2 geometry/allocation/redundancy methodology
+└── results/                # generated figures + sizing/loading tables
 ```
 
 ## Reproduction
@@ -144,24 +212,32 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q
 python scripts/verify_wheel_sizing.py
+python scripts/analyze_wheel_geometry.py
 ```
 
 ## Limitations
 
-- Single-axis analysis only; no 3-wheel/pyramidal allocation or worst-wheel
-  loading yet (Milestone 2).
 - No environmental disturbance torques (gravity-gradient, aerodynamic,
   solar-radiation-pressure, magnetic) or momentum accumulation over an
   orbit (Milestone 3).
 - No momentum-dumping/desaturation modeling (Milestone 4).
 - No commercial reaction-wheel selection — the "representative wheel" is
-  a synthetic capability model used only to exercise the mechanics.
+  a synthetic capability model used only to exercise the mechanics, and
+  all wheels in the M2 sets share identical capability.
 - Rest-to-rest maneuver kinematics use an idealized bang-bang
-  (triangular-rate) open-loop profile, not a closed-loop controller.
+  (triangular-rate) open-loop profile, not a closed-loop controller; the
+  3-axis combined slew case (M2 §15) uses a decoupled per-axis sizing
+  approximation, not exact nonlinear rigid-body attitude dynamics.
 - Spacecraft inertia is diagonal (principal-axis); no products of inertia.
+- The M2 null-space freedom in the 4-wheel geometry is demonstrated but
+  not yet used for any secondary objective (wheel-speed balancing,
+  momentum redistribution) — that is future-milestone scope.
+- M2 allocation is unconstrained minimum-norm; infeasible demands are
+  detected and reported, never silently clipped.
 
 ## Planned next milestone
 
-**M2 — 3-axis wheel-set geometry**: 3-wheel and optionally 4-wheel/
-pyramidal actuator allocation, wheel-space/body-space torque mapping, and
-worst-wheel loading analysis.
+**M3 — Disturbance momentum accumulation**: representative environmental
+disturbance torques (gravity-gradient, aerodynamic, solar-radiation-pressure,
+magnetic), momentum buildup over an orbit, storage sizing, and saturation
+time.
